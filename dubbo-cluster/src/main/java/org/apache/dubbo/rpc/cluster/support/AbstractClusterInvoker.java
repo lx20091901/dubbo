@@ -160,7 +160,7 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
             return null;
         }
         String methodName = invocation == null ? StringUtils.EMPTY_STRING : RpcUtils.getMethodName(invocation);
-
+        // 特性：粘滞连接 忽略
         boolean sticky =
                 invokers.get(0).getUrl().getMethodParameter(methodName, CLUSTER_STICKY_KEY, DEFAULT_CLUSTER_STICKY);
 
@@ -191,15 +191,18 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
         if (CollectionUtils.isEmpty(invokers)) {
             return null;
         }
+        // 只有一个invoker，直接返回
         if (invokers.size() == 1) {
             Invoker<T> tInvoker = invokers.get(0);
             checkShouldInvalidateInvoker(tInvoker);
             return tInvoker;
         }
+        // loadbalancer进行一次选择
         Invoker<T> invoker = loadbalance.select(invokers, getUrl(), invocation);
 
         // If the `invoker` is in the  `selected` or invoker is unavailable && availablecheck is true, reselect.
         boolean isSelected = selected != null && selected.contains(invoker);
+        // 可用性检查
         boolean isUnavailable = availableCheck && !invoker.isAvailable() && getUrl() != null;
 
         if (isUnavailable) {
@@ -207,10 +210,12 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
         }
         if (isSelected || isUnavailable) {
             try {
+                // 重新select
                 Invoker<T> rInvoker = reselect(loadbalance, invocation, invokers, selected, availableCheck);
                 if (rInvoker != null) {
                     invoker = rInvoker;
                 } else {
+                    // 如果重新select结果为null，选invoker的下一个
                     // Check the index of current selected invoker, if it's not the last one, choose the one at index+1.
                     int index = invokers.indexOf(invoker);
                     try {
@@ -352,17 +357,19 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
         //        }
 
         InvocationProfilerUtils.enterDetailProfiler(invocation, () -> "Router route.");
+        // step1 Directory#list
         List<Invoker<T>> invokers = list(invocation);
         InvocationProfilerUtils.releaseDetailProfiler(invocation);
 
         checkInvokers(invokers, invocation);
-
+        // step2 找LoadBalance扩展点
         LoadBalance loadbalance = initLoadBalance(invokers, invocation);
         RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);
 
         InvocationProfilerUtils.enterDetailProfiler(
                 invocation, () -> "Cluster " + this.getClass().getName() + " invoke.");
         try {
+            // step3 子类实现
             return doInvoke(invocation, invokers, loadbalance);
         } finally {
             InvocationProfilerUtils.releaseDetailProfiler(invocation);

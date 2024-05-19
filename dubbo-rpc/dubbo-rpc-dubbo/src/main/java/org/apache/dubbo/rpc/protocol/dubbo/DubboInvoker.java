@@ -92,17 +92,18 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
         inv.setAttachment(PATH_KEY, getUrl().getPath());
         inv.setAttachment(VERSION_KEY, version);
 
+        // 确定底层通讯用哪个连接
         ExchangeClient currentClient;
         List<? extends ExchangeClient> exchangeClients = clientsProvider.getClients();
-        if (exchangeClients.size() == 1) {
+        if (exchangeClients.size() == 1) {// 默认单一长连接
             currentClient = exchangeClients.get(0);
-        } else {
+        } else {// 特殊的可以有多个连接，那么轮询
             currentClient = exchangeClients.get(index.getAndIncrement() % exchangeClients.size());
         }
         RpcContext.getServiceContext().setLocalAddress(currentClient.getLocalAddress());
         try {
             boolean isOneway = RpcUtils.isOneway(getUrl(), invocation);
-
+            // 超时时间
             int timeout = RpcUtils.calculateTimeout(getUrl(), invocation, methodName, DEFAULT_TIMEOUT);
             if (timeout <= 0) {
                 return AsyncRpcResult.newDefaultAsyncResult(
@@ -131,13 +132,16 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
                 return AsyncRpcResult.newDefaultAsyncResult(invocation);
             } else {
                 request.setTwoWay(true);
+                // 处理rpc响应的业务线程池，如果是同步调用走ThreadLessExecutor，做特殊处理
                 ExecutorService executor = getCallbackExecutor(getUrl(), inv);
+                // 提交到通讯层
                 CompletableFuture<AppResponse> appResponseFuture =
                         currentClient.request(request, timeout, executor).thenApply(AppResponse.class::cast);
                 // save for 2.6.x compatibility, for example, TraceFilter in Zipkin uses com.alibaba.xxx.FutureAdapter
                 if (setFutureWhenSync || ((RpcInvocation) invocation).getInvokeMode() != InvokeMode.SYNC) {
                     FutureContext.getContext().setCompatibleFuture(appResponseFuture);
                 }
+                // 通讯层返回Future封装一层AsyncRpcResult
                 AsyncRpcResult result = new AsyncRpcResult(appResponseFuture, inv);
                 result.setExecutor(executor);
                 return result;

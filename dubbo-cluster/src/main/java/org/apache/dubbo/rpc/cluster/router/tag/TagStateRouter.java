@@ -199,19 +199,23 @@ public class TagStateRouter<T> extends AbstractStateRouter<T> implements Configu
     private <T> BitList<Invoker<T>> filterUsingStaticTag(BitList<Invoker<T>> invokers, URL url, Invocation invocation) {
         BitList<Invoker<T>> result;
         // Dynamic param
+        // 优先走RpcContext获取tag, 其次走订阅url获取tag
         String tag = StringUtils.isEmpty(invocation.getAttachment(TAG_KEY))
                 ? url.getParameter(TAG_KEY)
                 : invocation.getAttachment(TAG_KEY);
         // Tag request
         if (!StringUtils.isEmpty(tag)) {
+            // 如果有tag，优先找同tag的provider
             result = filterInvoker(
                     invokers, invoker -> tag.equals(invoker.getUrl().getParameter(TAG_KEY)));
             if (CollectionUtils.isEmpty(result) && !isForceUseTag(invocation)) {
+                // 否则，默认找无tag的provider
                 result = filterInvoker(
                         invokers,
                         invoker -> StringUtils.isEmpty(invoker.getUrl().getParameter(TAG_KEY)));
             }
         } else {
+            // 无tag，找无tag的provider
             result = filterInvoker(
                     invokers, invoker -> StringUtils.isEmpty(invoker.getUrl().getParameter(TAG_KEY)));
         }

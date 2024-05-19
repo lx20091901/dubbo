@@ -71,7 +71,7 @@ public abstract class AbstractRegistryFactory implements RegistryFactory, ScopeM
                 .removeAttribute(EXPORT_KEY)
                 .removeAttribute(REFER_KEY)
                 .build();
-
+        // key=zookeeper://127.0.0.1:2181/org.apache.dubbo.registry.RegistrySerive
         String key = createRegistryCacheKey(url);
         Registry registry = null;
         boolean check = url.getParameter(CHECK_KEY, true) && url.getPort() != 0;

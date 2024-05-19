@@ -40,16 +40,19 @@ public class ModuleServiceRepository {
 
     /**
      * services
+     * rpc服务类名-服务描述
      */
     private final ConcurrentMap<String, List<ServiceDescriptor>> services = new ConcurrentHashMap<>();
 
     /**
      * consumers ( key - group/interface:version value - consumerModel list)
+     * rpc服务key-消费者模型
      */
     private final ConcurrentMap<String, List<ConsumerModel>> consumers = new ConcurrentHashMap<>();
 
     /**
      * providers
+     * rpc服务key-提供者模型
      */
     private final ConcurrentMap<String, ProviderModel> providers = new ConcurrentHashMap<>();
 

@@ -297,6 +297,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             ExtensionLoader<ServiceListener> extensionLoader = this.getExtensionLoader(ServiceListener.class);
             this.serviceListeners.addAll(extensionLoader.getSupportedExtensionInstances());
         }
+        // RPC服务元数据信息
         initServiceMetadata(provider);
         serviceMetadata.setServiceType(getInterfaceClass());
         serviceMetadata.setTarget(getRef());
@@ -314,6 +315,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             getScopeModel().getDeployer().prepare();
         } else {
             // ensure start module, compatible with old api usage
+            // 初始化全局配置
             getScopeModel().getDeployer().start();
         }
 
@@ -323,13 +325,16 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             }
 
             if (!this.isRefreshed()) {
+                // serviceConfig二次填充并校验
                 this.refresh();
             }
+            // 是否允许暴露 serviceConfig.export or providerConfig.export
             if (this.shouldExport()) {
                 this.init();
 
                 if (shouldDelay()) {
                     // should register if delay export
+                    // 延迟暴露
                     doDelayExport();
                 } else if (Integer.valueOf(-1).equals(getDelay())
                         && Boolean.parseBoolean(ConfigurationUtils.getProperty(
@@ -554,6 +559,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             }
             repository.registerService(serviceDescriptor);
         } else {
+            // 注册ServiceDescriptor RPC服务描述
             serviceDescriptor = repository.registerService(getInterfaceClass());
         }
         providerModel = new ProviderModel(
@@ -569,9 +575,10 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
         providerModel.setDestroyRunner(getDestroyRunner());
         repository.registerProvider(providerModel);
-
+        // 根据RegistryConfig构造注册中心url
+        // registry://127.0.0.1:2181/org.apache.****?application=**&registry=zookeeper
         List<URL> registryURLs = ConfigValidationUtils.loadRegistries(this, true);
-
+        // 循环所有支持的协议
         for (ProtocolConfig protocolConfig : protocols) {
             String pathKey = URL.buildKey(
                     getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), group, version);
@@ -580,6 +587,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 // In case user specified path, register service one more time to map it to path.
                 repository.registerService(pathKey, interfaceClass);
             }
+            // 暴露【核心】
             doExportUrlsFor1Protocol(protocolConfig, registryURLs, registerType);
         }
 
@@ -588,13 +596,14 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     private void doExportUrlsFor1Protocol(
             ProtocolConfig protocolConfig, List<URL> registryURLs, RegisterTypeEnum registerType) {
+        // 将各种配置，注入这个map，用map作为parameter，构造url
         Map<String, String> map = buildAttributes(protocolConfig);
 
         // remove null key and null value
         map.keySet().removeIf(key -> StringUtils.isEmpty(key) || StringUtils.isEmpty(map.get(key)));
         // init serviceMetadata attachments
         serviceMetadata.getAttachments().putAll(map);
-
+        // 暴露到注册中心的url
         URL url = buildUrl(protocolConfig, map);
 
         processServiceExecutor(url);
@@ -837,6 +846,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
             // export to local if the config is not remote (export to remote only when config is remote)
             if (!SCOPE_REMOTE.equalsIgnoreCase(scope)) {
+                // 暴露injvm协议
                 exportLocal(url);
             }
 
@@ -939,11 +949,12 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 || registerType == RegisterTypeEnum.AUTO_REGISTER_BY_DEPLOYER) {
             url = url.addParameter(REGISTER_KEY, false);
         }
-
+        // 创建代理对象，负责当前RPC服务的方法调用
         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
         if (withMetaData) {
             invoker = new DelegateProviderMetaDataInvoker(invoker, this);
         }
+        // 暴露
         Exporter<?> exporter = protocolSPI.export(invoker);
         exporters
                 .computeIfAbsent(registerType, k -> new CopyOnWriteArrayList<>())

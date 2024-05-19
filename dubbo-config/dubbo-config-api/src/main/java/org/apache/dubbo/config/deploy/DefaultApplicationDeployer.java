@@ -142,7 +142,9 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
     public DefaultApplicationDeployer(ApplicationModel applicationModel) {
         super(applicationModel);
         this.applicationModel = applicationModel;
+        // 实例化ConfigManager
         configManager = applicationModel.getApplicationConfigManager();
+        // 实例化Environment
         environment = applicationModel.modelEnvironment();
 
         referenceCache = new CompositeReferenceCache(applicationModel);
@@ -212,11 +214,12 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
             if (initialized) {
                 return;
             }
+            // listener的初始化
             onInitialize();
 
             // register shutdown hook
             registerShutdownHook();
-
+            // 配置中心拉配置注入Environment
             startConfigCenter();
 
             loadApplicationConfigs();
@@ -296,6 +299,7 @@ public class DefaultApplicationDeployer extends AbstractDeployer<ApplicationMode
                 environment.updateAppExternalConfigMap(configCenter.getAppExternalConfiguration());
 
                 // Fetch config from remote config center
+                // 从远程配置中心拉取
                 compositeDynamicConfiguration.addConfiguration(prepareEnvironment(configCenter));
             }
             environment.setDynamicConfiguration(compositeDynamicConfiguration);

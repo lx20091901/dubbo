@@ -238,7 +238,9 @@ public abstract class AbstractCluster implements Cluster {
         public Result invoke(Invocation invocation) throws RpcException {
             Result asyncResult;
             try {
+                // 前置拦截
                 interceptor.before(next, invocation);
+                // 执行
                 asyncResult = interceptor.intercept(next, invocation);
             } catch (Exception e) {
                 // onError callback
@@ -248,10 +250,12 @@ public abstract class AbstractCluster implements Cluster {
                 }
                 throw e;
             } finally {
+                // 后缀拦截
                 interceptor.after(next, invocation);
             }
             return asyncResult.whenCompleteWithContext((r, t) -> {
                 // onResponse callback
+                // rpc请求完成回调ClusterInterceptor.Listener
                 if (interceptor instanceof ClusterInterceptor.Listener) {
                     ClusterInterceptor.Listener listener = (ClusterInterceptor.Listener) interceptor;
                     if (t == null) {

@@ -227,6 +227,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
                             1,
                             Collections.singletonList(registryName)),
                     () -> {
+                        // 注册
                         registry.register(registeredProviderUrl);
                         return null;
                     });
@@ -242,14 +243,17 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
 
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
+        // 构造注册中心协议url，zookeeper://...
         URL registryUrl = getRegistryUrl(originInvoker);
         // url to export locally
+        // 注册url=export参数url，就是之前map拼接的url，dubbo://
         URL providerUrl = getProviderUrl(originInvoker);
 
         // Subscribe the override data
         // FIXME When the provider subscribes, it will affect the scene : a certain JVM exposes the service and call
         //  the same service. Because the subscribed is cached key with the name of the service, it causes the
         //  subscription information to cover.
+        // url动态配置相关，暂时忽略，provider://
         final URL overrideSubscribeUrl = getSubscribedOverrideUrl(providerUrl);
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
         Map<URL, Set<NotifyListener>> overrideListeners =
@@ -260,15 +264,18 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
 
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
         // export invoker
+        // [step1] 暴露rpc服务，用不同的url（providerUrl）走一次Protocol的Adaptive实现
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
         // url to registry
+        // 根据url的协议protocol获取Registry实现
         final Registry registry = getRegistry(registryUrl);
         final URL registeredProviderUrl = customizeURL(providerUrl, registryUrl);
 
         // decide if we need to delay publish (provider itself and registry should both need to register)
         boolean register = providerUrl.getParameter(REGISTER_KEY, true) && registryUrl.getParameter(REGISTER_KEY, true);
         if (register) {
+            // [step2] rpc服务注册到注册中心
             register(registry, registeredProviderUrl);
         }
 
@@ -290,7 +297,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
                 registry.subscribe(overrideSubscribeUrl, overrideSubscribeListener);
             }
         }
-
+        // RegistryProtocolListener SPI 忽略
         notifyExport(exporter);
         // Ensure that a new exporter instance is returned every time export
         return new DestroyableExporter<>(exporter);
@@ -329,6 +336,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
         return (ExporterChangeableWrapper<T>) bounds.computeIfAbsent(providerUrlKey, k -> new ConcurrentHashMap<>())
                 .computeIfAbsent(
                         registryUrlKey,
+                        // 暴露rpc服务，RegistryProtocol通过setter注入的protocol就是个Adaptive实现
                         s -> new ExporterChangeableWrapper<>((ReferenceCountExporter<T>) exporter, originInvoker));
     }
 
@@ -635,9 +643,11 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
             directory.setRegisteredConsumerUrl(urlToRegistry);
             registry.register(directory.getRegisteredConsumerUrl());
         }
+        // 构造路由链
         directory.buildRouterChain(urlToRegistry);
+        // [step1] 订阅
         directory.subscribe(toSubscribeUrl(urlToRegistry));
-
+        // [step2] AdaptiveCluster封装Directory为invoker
         return (ClusterInvoker<T>) cluster.join(directory, true);
     }
 

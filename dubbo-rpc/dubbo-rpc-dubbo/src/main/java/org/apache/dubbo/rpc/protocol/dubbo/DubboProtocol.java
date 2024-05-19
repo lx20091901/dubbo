@@ -128,6 +128,7 @@ public class DubboProtocol extends AbstractProtocol {
                 }
 
                 Invocation inv = (Invocation) message;
+                // 根据Invocation找invoker
                 Invoker<?> invoker = inv.getInvoker() == null ? getInvoker(channel, inv) : inv.getInvoker();
                 // switch TCCL
                 if (invoker.getUrl().getServiceModel() != null) {
@@ -164,6 +165,7 @@ public class DubboProtocol extends AbstractProtocol {
                     }
                 }
                 RpcContext.getServiceContext().setRemoteAddress(channel.getRemoteAddress());
+                // 执行invoker
                 Result result = invoker.invoke(inv);
                 return result.thenApply(Function.identity());
             }
@@ -304,9 +306,10 @@ public class DubboProtocol extends AbstractProtocol {
             path += "." + inv.getObjectAttachmentWithoutConvert(CALLBACK_SERVICE_KEY);
             inv.setObjectAttachment(IS_CALLBACK_SERVICE_INVOKE, Boolean.TRUE.toString());
         }
-
+        // 拼接serviceKey
         String serviceKey = serviceKey(port, path, (String) inv.getObjectAttachmentWithoutConvert(VERSION_KEY), (String)
                 inv.getObjectAttachmentWithoutConvert(GROUP_KEY));
+        // 根据serviceKey找到暴露的Exporter
         DubboExporter<?> exporter = (DubboExporter<?>) exporterMap.get(serviceKey);
 
         if (exporter == null) {
@@ -357,7 +360,7 @@ public class DubboProtocol extends AbstractProtocol {
                 }
             }
         }
-
+        // 开启nettyServer
         openServer(url);
         optimizeSerialization(url);
 
@@ -377,6 +380,7 @@ public class DubboProtocol extends AbstractProtocol {
                 synchronized (this) {
                     server = serverMap.get(key);
                     if (server == null) {
+                        // 创建netty server
                         serverMap.put(key, createServer(url));
                         return;
                     }

@@ -55,8 +55,10 @@ public class ProtocolFilterWrapper implements Protocol {
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
         if (UrlUtils.isRegistry(invoker.getUrl())) {
+            // 首次进这里，protocol=RegistryProtocol
             return protocol.export(invoker);
         }
+        // 后面会进这里，暴露rpc服务，比如protocol=DubboProtocol
         FilterChainBuilder builder = getFilterChainBuilder(invoker.getUrl());
         return protocol.export(builder.buildInvokerChain(invoker, SERVICE_FILTER_KEY, CommonConstants.PROVIDER));
     }
@@ -69,9 +71,11 @@ public class ProtocolFilterWrapper implements Protocol {
     @Override
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
         if (UrlUtils.isRegistry(url)) {
+            // 首次进这里，protocol=RegistryProtocol
             return protocol.refer(type, url);
         }
         FilterChainBuilder builder = getFilterChainBuilder(url);
+        // 后面会进到这里，引用rpc服务，比如protocol=DubboProtocol
         return builder.buildInvokerChain(protocol.refer(type, url), REFERENCE_FILTER_KEY, CommonConstants.CONSUMER);
     }
 

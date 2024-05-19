@@ -62,10 +62,12 @@ public class Environment extends LifecycleAdapter implements ApplicationExt {
 
     protected CompositeConfiguration globalConfiguration;
 
+    // 组合模式
     protected List<Map<String, String>> globalConfigurationMaps;
 
     private CompositeConfiguration defaultDynamicGlobalConfiguration;
 
+    // 配置中心注入
     private DynamicConfiguration defaultDynamicConfiguration;
 
     private String localMigrationRule;

@@ -194,6 +194,7 @@ public abstract class DynamicDirectory<T> extends AbstractDirectory<T> implement
     @Override
     public List<Invoker<T>> doList(
             SingleRouterChain<T> singleRouterChain, BitList<Invoker<T>> invokers, Invocation invocation) {
+        // 注册中心无provider，FORBIDDEN_EXCEPTION异常
         if (forbidden && shouldFailFast) {
             // 1. No service provider 2. Service providers are disabled
             throw new RpcException(
@@ -204,11 +205,11 @@ public abstract class DynamicDirectory<T> extends AbstractDirectory<T> implement
                             + " use dubbo version " + Version.getVersion()
                             + ", please check status of providers(disabled, not registered or in blocklist).");
         }
-
+        // 消费方订阅多个group，没有路由逻辑
         if (multiGroup) {
             return this.getInvokers();
         }
-
+        // RouterChain#route过滤invokers
         try {
             // Get invokers from cache, only runtime routers will be executed.
             List<Invoker<T>> result = singleRouterChain.route(getConsumerUrl(), invokers, invocation);

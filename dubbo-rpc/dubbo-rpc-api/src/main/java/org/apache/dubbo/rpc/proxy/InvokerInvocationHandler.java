@@ -66,6 +66,7 @@ public class InvokerInvocationHandler implements InvocationHandler {
         } else if (parameterTypes.length == 1 && "equals".equals(methodName)) {
             return invoker.equals(args[0]);
         }
+        // 组装RpcInvocation，贯穿Invoker#invoke
         RpcInvocation rpcInvocation = new RpcInvocation(
                 serviceModel,
                 method.getName(),

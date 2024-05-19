@@ -227,6 +227,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         }
 
         if (ref == null) {
+            // [step1] 初始化 主要是environment
             if (getScopeModel().isLifeCycleManagedExternally()) {
                 // prepare model for reference
                 getScopeModel().getDeployer().prepare();
@@ -323,6 +324,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             return;
         }
         try {
+            // [step2] ReferenceConfig 二次填充校验
             if (!this.isRefreshed()) {
                 this.refresh();
             }
@@ -339,6 +341,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             // TODO, uncomment this line once service key is unified
             serviceMetadata.generateServiceKey();
 
+            // [step3] 将各种配置注入map，为后续创建URL做铺垫
             Map<String, String> referenceParameters = appendConfig();
 
             ModuleServiceRepository repository = getScopeModel().getServiceRepository();
@@ -367,6 +370,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
 
             serviceMetadata.getAttachments().putAll(referenceParameters);
 
+            // [step4] 创建rpc服务代理
             ref = createProxy(referenceParameters);
 
             serviceMetadata.setTarget(ref);
@@ -477,6 +481,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         meshModeHandleUrl(referenceParameters);
 
         if (StringUtils.isNotEmpty(url)) {
+            // [特性：直连提供者] 用户指定url，不走注册中心，忽略
             // user specified URL, could be peer-to-peer address, or register center's address.
             parseUrl(referenceParameters);
         } else {
@@ -616,6 +621,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
      */
     private void aggregateUrlFromRegistry(Map<String, String> referenceParameters) {
         checkRegistry();
+        // 根据ReferenceConfig配置，构造注册中心url，即registry://
         List<URL> us = ConfigValidationUtils.loadRegistries(this, false);
         if (CollectionUtils.isNotEmpty(us)) {
             for (URL u : us) {
@@ -628,9 +634,11 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 if (isInjvm() != null && isInjvm()) {
                     u = u.addParameter(LOCAL_PROTOCOL, true);
                 }
+                // 在registry://后面拼refer=map
                 urls.add(u.putAttribute(REFER_KEY, referenceParameters));
             }
         }
+        // [特性：本地调用] 直接走injvm
         if (urls.isEmpty() && shouldJvmRefer(referenceParameters)) {
             URL injvmUrl = new URL(LOCAL_PROTOCOL, LOCALHOST_VALUE, 0, interfaceClass.getName())
                     .addParameters(referenceParameters);
@@ -652,6 +660,8 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void createInvoker() {
         if (urls.size() == 1) {
+            // [重点] 自适应Protocol执行refer方法
+            // url = registry://...
             URL curUrl = urls.get(0);
             invoker = protocolSPI.refer(interfaceClass, curUrl);
             // registry url, mesh-enable and unloadClusterRelated is true, not need Cluster.
@@ -662,6 +672,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                         .join(new StaticDirectory(curUrl, invokers), true);
             }
         } else {
+            // [特性：多注册中心]
             List<Invoker<?>> invokers = new ArrayList<>();
             URL registryUrl = null;
             for (URL url : urls) {

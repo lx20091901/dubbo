@@ -96,11 +96,12 @@ public abstract class AbstractProxyInvoker<T> implements Invoker<T> {
                     originEntry = Profiler.setToBizProfiler(profiler);
                 }
             }
-
+            // 调用目标rpc方法
             Object value = doInvoke(
                     proxy, invocation.getMethodName(), invocation.getParameterTypes(), invocation.getArguments());
-
+            // 对于同步返回也会包装为CompleteFuture
             CompletableFuture<Object> future = wrapWithFuture(value, invocation);
+            // 再包一层AppResponse
             CompletableFuture<AppResponse> appResponseFuture = future.handle((obj, t) -> {
                 AppResponse result = new AppResponse(invocation);
                 if (t != null) {
@@ -110,10 +111,11 @@ public abstract class AbstractProxyInvoker<T> implements Invoker<T> {
                         result.setException(t);
                     }
                 } else {
-                    result.setValue(obj);
+                    result.setValue(obj);// rpc返回结果
                 }
                 return result;
             });
+            // 再包一层AsyncRpcResult
             return new AsyncRpcResult(appResponseFuture, invocation);
         } catch (InvocationTargetException e) {
             if (RpcContext.getServiceContext().isAsyncStarted()

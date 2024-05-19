@@ -61,6 +61,7 @@ public class InvocationUtil {
                 }
                 rpcInvocation.put(Profiler.PROFILER_KEY, bizProfiler);
                 try {
+                    // 【关注】 远程调用
                     return invoker.invoke(rpcInvocation).recreate();
                 } finally {
                     Profiler.release(bizProfiler);

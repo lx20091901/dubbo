@@ -150,6 +150,7 @@ final class HeaderExchangeChannel implements ExchangeChannel {
             req.setTwoWay(true);
             req.setData(request);
         }
+        // 【关注】 reqId -> future
         DefaultFuture future = DefaultFuture.newFuture(channel, req, timeout, executor);
         try {
             channel.send(req);

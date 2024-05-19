@@ -96,7 +96,7 @@ public class DefaultFuture extends CompletableFuture<Object> {
         this.id = request.getId();
         this.timeout = timeout > 0 ? timeout : channel.getUrl().getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
         // put into waiting map.
-        FUTURES.put(id, this);
+        FUTURES.put(id, this);// 核心
         CHANNELS.put(id, channel);
     }
 
@@ -125,10 +125,10 @@ public class DefaultFuture extends CompletableFuture<Object> {
      * @return a new DefaultFuture
      */
     public static DefaultFuture newFuture(Channel channel, Request request, int timeout, ExecutorService executor) {
-        final DefaultFuture future = new DefaultFuture(channel, request, timeout);
-        future.setExecutor(executor);
+        final DefaultFuture future = new DefaultFuture(channel, request, timeout);// 绑定到全局map
+        future.setExecutor(executor);// future绑rpc响应executor
         // timeout check
-        timeoutCheck(future);
+        timeoutCheck(future);// 提交超时检测延迟任务（HashedWheelTimer）
         return future;
     }
 
@@ -200,11 +200,13 @@ public class DefaultFuture extends CompletableFuture<Object> {
         try {
             DefaultFuture future = FUTURES.remove(response.getId());
             if (future != null) {
+                // step1 取消超时检测任务
                 Timeout t = future.timeoutCheckTask;
                 if (!timeout) {
                     // decrease Time
                     t.cancel();
                 }
+                // step2 完成future
                 future.doReceived(response);
                 shutdownExecutorIfNeeded(future);
             } else {

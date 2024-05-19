@@ -598,6 +598,7 @@ public abstract class AbstractConfig implements Serializable {
         }
 
         // dubbo.{tag-name}
+        // 前缀 比如dubbo.service/dubbo.registry
         prefixes.add(getTypePrefix(this.getClass()));
         return prefixes;
     }

@@ -59,8 +59,11 @@ public class AllChannelHandler extends WrappedChannelHandler {
 
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
+        // 对于provider，这里是DubboServerHandler线程池
+        // 对于consumer，同步调用，这里获取的就是ThreadlessExecutor
         ExecutorService executor = getPreferredExecutorService(message);
         try {
+            // netty worker线程将runnable任务放入ThreadlessExecutor中队列，waitAndDrain从阻塞中被唤醒（queue.take）
             executor.execute(new ChannelEventRunnable(channel, handler, ChannelState.RECEIVED, message));
         } catch (Throwable t) {
             if (message instanceof Request && t instanceof RejectedExecutionException) {

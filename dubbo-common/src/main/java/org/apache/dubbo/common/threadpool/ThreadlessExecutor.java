@@ -55,6 +55,7 @@ public class ThreadlessExecutor extends AbstractExecutorService {
      */
     public void waitAndDrain(long deadline) throws InterruptedException {
         throwIfInterrupted();
+        // 等待io线程将rpc响应投递到这里
         Runnable runnable = queue.poll();
         if (runnable == null) {
             if (waiter.compareAndSet(null, Thread.currentThread())) {

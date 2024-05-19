@@ -34,13 +34,17 @@ public class Application {
 
     private static void startWithBootstrap() {
         ServiceConfig<DemoServiceImpl> service = new ServiceConfig<>();
+        // rpc服务定义
         service.setInterface(DemoService.class);
         service.setRef(new DemoServiceImpl());
 
         DubboBootstrap bootstrap = DubboBootstrap.getInstance();
         bootstrap
+                // 应用配置
                 .application(new ApplicationConfig("dubbo-demo-api-provider"))
+                // 注册中心配置
                 .registry(new RegistryConfig(REGISTRY_URL))
+                // rpc协议配置
                 .protocol(new ProtocolConfig(CommonConstants.DUBBO, -1))
                 .service(service)
                 .start()
