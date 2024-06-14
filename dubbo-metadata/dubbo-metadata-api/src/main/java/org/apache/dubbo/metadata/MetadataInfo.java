@@ -194,6 +194,7 @@ public class MetadataInfo implements Serializable {
         } else {
             StringBuilder sb = new StringBuilder();
             sb.append(app);
+            // 当前应用实例，所有rpc服务列表
             for (Map.Entry<String, ServiceInfo> entry : new TreeMap<>(services).entrySet()) {
                 sb.append(entry.getValue().toDescString());
             }

@@ -473,6 +473,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
 
     protected URL getRegistryUrl(URL url) {
         if (SERVICE_REGISTRY_PROTOCOL.equals(url.getProtocol())) {
+            //直接返回原始url，protocol还是service-discovery-registry
             return url;
         }
         return url.addParameter(REGISTRY_KEY, url.getProtocol()).setProtocol(SERVICE_REGISTRY_PROTOCOL);

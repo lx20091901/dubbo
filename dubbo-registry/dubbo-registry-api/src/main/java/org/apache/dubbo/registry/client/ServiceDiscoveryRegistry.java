@@ -199,7 +199,7 @@ public class ServiceDiscoveryRegistry extends FailbackRegistry {
         url = addRegistryClusterKey(url);
 
         serviceDiscovery.subscribe(url, listener);
-
+        //找rpc服务 -> 应用名
         Set<String> mappingByUrl = ServiceNameMapping.getMappingByUrl(url);
 
         String key = ServiceNameMapping.buildMappingKey(url);
@@ -211,6 +211,7 @@ public class ServiceDiscoveryRegistry extends FailbackRegistry {
                 mappingByUrl = serviceNameMapping.getMapping(url);
                 try {
                     MappingListener mappingListener = new DefaultMappingListener(url, mappingByUrl, listener);
+                    // 走元数据中心查询 interface+group+version rpc服务对应所有应用
                     mappingByUrl = serviceNameMapping.getAndListen(this.getUrl(), url, mappingListener);
                     synchronized (mappingListeners) {
                         mappingListeners
@@ -348,6 +349,7 @@ public class ServiceDiscoveryRegistry extends FailbackRegistry {
             if (serviceInstancesChangedListener == null) {
                 serviceInstancesChangedListener = serviceDiscovery.createListener(serviceNames);
                 for (String serviceName : serviceNames) {
+                    // 从注册中心获取应用->应用实例
                     List<ServiceInstance> serviceInstances = serviceDiscovery.getInstances(serviceName);
                     if (CollectionUtils.isNotEmpty(serviceInstances)) {
                         serviceInstancesChangedListener.onEvent(

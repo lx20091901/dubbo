@@ -92,6 +92,7 @@ public interface ServiceNameMapping extends Destroyable {
     }
 
     static Set<String> getMappingByUrl(URL consumerURL) {
+        // 如果指定了provider-by，则返回户指定的应用
         String providedBy = consumerURL.getParameter(RegistryConstants.PROVIDED_BY);
         if (StringUtils.isBlank(providedBy)) {
             return null;

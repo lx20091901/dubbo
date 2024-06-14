@@ -167,10 +167,11 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
             }
 
             onModuleStarting();
-
+            // 0. 和传统api一致，注意元数据服务初始化
             initialize();
 
             // export services
+            // 1.调用所有ServiceConfig.export
             exportServices();
 
             // prepare application instance
@@ -180,6 +181,7 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
             }
 
             // refer services
+            // 调用所有的ReferenceConfig.get
             referServices();
 
             // if no async export/refer services, just set started

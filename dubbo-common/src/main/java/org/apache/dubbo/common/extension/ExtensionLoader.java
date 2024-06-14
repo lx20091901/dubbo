@@ -775,10 +775,14 @@ public class ExtensionLoader<T> {
         try {
             T instance = (T) extensionInstances.get(clazz);
             if (instance == null) {
+                // 选择构造方法，实例化，构造注入
                 extensionInstances.putIfAbsent(clazz, createExtensionInstance(clazz));
                 instance = (T) extensionInstances.get(clazz);
+                // 初始化前，目前无扩展实现
                 instance = postProcessBeforeInitialization(instance, name);
+                // setter注入
                 injectExtension(instance);
+                // 初始化后，aware注入
                 instance = postProcessAfterInitialization(instance, name);
             }
 

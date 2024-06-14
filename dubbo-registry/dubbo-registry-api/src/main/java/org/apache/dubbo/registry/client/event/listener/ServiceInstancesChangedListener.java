@@ -138,7 +138,7 @@ public class ServiceInstancesChangedListener {
         if (logger.isDebugEnabled()) {
             logger.debug(event.getServiceInstances().toString());
         }
-
+        // 应用名-> revision -> rpc服务模型urls（通过rps调用获取）
         Map<String, List<ServiceInstance>> revisionToInstances = new HashMap<>();
         Map<ServiceInfo, Set<String>> localServiceToRevisions = new HashMap<>();
 
@@ -464,6 +464,7 @@ public class ServiceInstancesChangedListener {
                             getAddresses(listenerWithKey.getProtocolServiceKey(), notifyListener.getConsumerUrl()));
                     logger.info(
                             "Notify service " + listenerWithKey.getProtocolServiceKey() + " with urls " + urls.size());
+                    // 通知RegistryDirectory
                     notifyListener.notify(urls);
                     lastNumMap.put(serviceKey, urls.size());
                 }

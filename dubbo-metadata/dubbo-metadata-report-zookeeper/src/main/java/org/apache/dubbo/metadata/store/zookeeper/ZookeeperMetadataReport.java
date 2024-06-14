@@ -199,6 +199,7 @@ public class ZookeeperMetadataReport extends AbstractMetadataReport {
             if (ticket != null && !(ticket instanceof Stat)) {
                 throw new IllegalArgumentException("zookeeper publishConfigCas requires stat type ticket");
             }
+            // /dubbo/config/mapping/接口名 服务名
             String pathKey = buildPathKey(group, key);
             zkClient.createOrUpdate(pathKey, content, false, ticket == null ? null : ((Stat) ticket).getVersion());
             return true;

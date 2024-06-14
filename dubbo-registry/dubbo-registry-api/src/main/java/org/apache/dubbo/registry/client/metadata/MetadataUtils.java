@@ -163,6 +163,7 @@ public class MetadataUtils {
 
     public static MetadataInfo getRemoteMetadata(
             String revision, List<ServiceInstance> instances, MetadataReport metadataReport) {
+        // 随机选取一个instance 避免热点
         ServiceInstance instance = selectInstance(instances);
         String metadataType = ServiceInstanceMetadataUtils.getMetadataStorageType(instance);
         MetadataInfo metadataInfo;
@@ -179,6 +180,7 @@ public class MetadataUtils {
                     proxyHolder = MetadataUtils.referProxy(instance);
                     metadataInfo = proxyHolder
                             .getProxy()
+                            // 调用对端MetadataService
                             .getMetadataInfo(ServiceInstanceMetadataUtils.getExportedServicesRevision(instance));
                 } finally {
                     MetadataUtils.destroyProxy(proxyHolder);

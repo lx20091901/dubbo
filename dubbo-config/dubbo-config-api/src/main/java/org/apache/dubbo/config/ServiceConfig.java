@@ -403,6 +403,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                         .getBeanFactory()
                         .getBean(FrameworkExecutorRepository.class)
                         .getSharedScheduledExecutor();
+                // 接口到服务名的映射
                 mapServiceName(url, serviceNameMapping, scheduledExecutor);
             }
         });
