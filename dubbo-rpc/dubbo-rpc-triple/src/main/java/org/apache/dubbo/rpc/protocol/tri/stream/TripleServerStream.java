@@ -198,11 +198,13 @@ public class TripleServerStream extends AbstractStream implements ServerStream {
             headers.status(HttpResponseStatus.OK.codeAsText());
             headers.set(HttpHeaderNames.CONTENT_TYPE, TripleConstant.CONTENT_PROTO);
         }
+        // attachment 注入头
         StreamUtils.convertAttachment(headers, attachments, TripleProtocol.CONVERT_NO_LOWER_HEADER);
         headers.set(TripleHeaderEnum.STATUS_KEY.getHeader(), String.valueOf(rpcStatus.code.code));
         if (rpcStatus.isOk()) {
             return headers;
         }
+        // grpc 相关头
         String grpcMessage = getGrpcMessage(rpcStatus);
         grpcMessage = TriRpcStatus.encodeMessage(TriRpcStatus.limitSizeTo1KB(grpcMessage));
         headers.set(TripleHeaderEnum.MESSAGE_KEY.getHeader(), grpcMessage);
@@ -295,13 +297,17 @@ public class TripleServerStream extends AbstractStream implements ServerStream {
     }
 
     private Invoker<?> getInvoker(Http2Headers headers, String serviceName) {
+        // tri-service-version
         final String version = headers.contains(TripleHeaderEnum.SERVICE_VERSION.getHeader())
                 ? headers.get(TripleHeaderEnum.SERVICE_VERSION.getHeader()).toString()
                 : null;
+        // tri-service-group
         final String group = headers.contains(TripleHeaderEnum.SERVICE_GROUP.getHeader())
                 ? headers.get(TripleHeaderEnum.SERVICE_GROUP.getHeader()).toString()
                 : null;
+        // 拼接serviceKey
         final String key = URL.buildKey(serviceName, group, version);
+        // 找Invoker
         Invoker<?> invoker = pathResolver.resolve(key);
         if (invoker == null && TripleProtocol.RESOLVE_FALLBACK_TO_DEFAULT) {
             invoker = pathResolver.resolve(URL.buildKey(serviceName, group, "1.0.0"));
@@ -336,6 +342,7 @@ public class TripleServerStream extends AbstractStream implements ServerStream {
 
         @Override
         public void onHeader(Http2Headers headers, boolean endStream) {
+            // 线程切换，netty的worker线程提交头处理任务到dubbo线程池
             executor.execute(() -> processHeader(headers, endStream));
         }
 
@@ -390,7 +397,7 @@ public class TripleServerStream extends AbstractStream implements ServerStream {
             }
             String serviceName = parts[1];
             String originalMethodName = parts[2];
-
+            // step1 PathResolver根据serviceKey找到invoker
             Invoker<?> invoker = getInvoker(headers, serviceName);
             if (invoker == null) {
                 responseErr(TriRpcStatus.UNIMPLEMENTED.withDescription("Service not found:" + serviceName));
@@ -415,11 +422,12 @@ public class TripleServerStream extends AbstractStream implements ServerStream {
                     deCompressor = compressor;
                 }
             }
-
+            // header转map
             Map<String, Object> requestMetadata = headersToMap(
                     headers, () -> Optional.ofNullable(headers.get(TripleHeaderEnum.TRI_HEADER_CONVERT.getHeader()))
                             .map(CharSequence::toString)
                             .orElse(null));
+            // 构造ServerStream.Listener
             boolean hasStub = pathResolver.hasNativeStub(path);
             if (hasStub) {
                 listener = new StubAbstractServerCall(
@@ -431,6 +439,7 @@ public class TripleServerStream extends AbstractStream implements ServerStream {
                         originalMethodName,
                         executor);
             } else {
+                // 无stub
                 listener = new ReflectionAbstractServerCall(
                         invoker,
                         TripleServerStream.this,
@@ -442,13 +451,16 @@ public class TripleServerStream extends AbstractStream implements ServerStream {
                         executor);
             }
             // must before onHeader
+            // step3 构造Deframer-TriDecoder
             deframer = new TriDecoder(deCompressor, new ServerDecoderListener(listener));
+            // step4 执行ReflectionAbstractServerCall#onHeader，入参是http请求头
             listener.onHeader(requestMetadata);
         }
 
         @Override
         public void onData(ByteBuf data, boolean endStream) {
             try {
+                // 线程切换
                 executor.execute(() -> doOnData(data, endStream));
             } catch (Throwable t) {
                 // Tasks will be rejected when the thread pool is closed or full,
@@ -464,8 +476,10 @@ public class TripleServerStream extends AbstractStream implements ServerStream {
                 ReferenceCountUtil.release(data);
                 return;
             }
+            // 反序列化 ByteBuf -> Class
             deframer.deframe(data);
             if (endStream) {
+                // endStream,触发目标方法执行
                 deframer.close();
             }
         }

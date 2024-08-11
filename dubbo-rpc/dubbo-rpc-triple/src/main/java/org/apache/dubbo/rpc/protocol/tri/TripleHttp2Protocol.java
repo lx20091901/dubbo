@@ -129,17 +129,25 @@ public class TripleHttp2Protocol extends AbstractWireProtocol implements ScopeMo
             @Override
             protected void initChannel(Http2StreamChannel ch) {
                 final ChannelPipeline p = ch.pipeline();
+                // 业务返回值处理，回写客户端【关注】
                 p.addLast(new TripleCommandOutBoundHandler());
+                // 核心业务handler，调用目标Invoker【重点】
                 p.addLast(new TripleHttp2FrameServerHandler(
                         frameworkModel, executorSupport, headFilters, ch, writeQueue));
             }
         });
         List<ChannelHandler> handlers = new ArrayList<>();
+        // Http2FrameCodec：反序列化为DataFrame和HeaderFrame【关注】
         handlers.add(new ChannelHandlerPretender(codec));
+        // 对于flush的优化，netty提供，忽略
         handlers.add(new ChannelHandlerPretender(new FlushConsolidationHandler(64, true)));
+        // 连接管理，【忽略】
         handlers.add(new ChannelHandlerPretender(new TripleServerConnectionHandler()));
+        // http2业务处理，开启子Channel（Http2StreamChannel）【关注】
         handlers.add(new ChannelHandlerPretender(handler));
+        // 防止内存泄露，忽略
         handlers.add(new ChannelHandlerPretender(new TripleTailHandler()));
+        // 将ChannelHandler加入Channel对应pipeline
         operator.configChannelHandler(handlers);
     }
 

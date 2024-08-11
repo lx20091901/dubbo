@@ -108,6 +108,7 @@ public class TripleHttp2FrameServerHandler extends ChannelDuplexHandler {
     }
 
     public void onHeadersRead(ChannelHandlerContext ctx, Http2HeadersFrame msg) throws Exception {
+        // provider 根据port选择executor 200线程
         Executor executor = executorSupport.getExecutor(msg.headers());
         tripleServerStream.setExecutor(executor);
         tripleServerStream.transportObserver.onHeader(msg.headers(), msg.isEndStream());

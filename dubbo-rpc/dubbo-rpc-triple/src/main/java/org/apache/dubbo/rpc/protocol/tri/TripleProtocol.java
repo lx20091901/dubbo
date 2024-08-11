@@ -40,8 +40,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-import io.grpc.health.v1.HealthCheckResponse;
-import io.grpc.health.v1.HealthCheckResponse.ServingStatus;
 
 import static org.apache.dubbo.common.constants.CommonConstants.DEFAULT_CLIENT_THREADPOOL;
 import static org.apache.dubbo.common.constants.CommonConstants.THREADPOOL_KEY;
@@ -93,6 +91,7 @@ public class TripleProtocol extends AbstractProtocol {
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
         URL url = invoker.getUrl();
         String key = serviceKey(url);
+        // step1 封装Exporter
         final AbstractExporter<T> exporter = new AbstractExporter<T>(invoker) {
             @Override
             public void afterUnExport() {
@@ -100,12 +99,7 @@ public class TripleProtocol extends AbstractProtocol {
                 pathResolver.remove(url.getServiceModel().getServiceModel().getInterfaceName());
                 // set service status
                 if (triBuiltinService.enable()) {
-                    triBuiltinService
-                            .getHealthStatusManager()
-                            .setStatus(url.getServiceKey(), ServingStatus.NOT_SERVING);
-                    triBuiltinService
-                            .getHealthStatusManager()
-                            .setStatus(url.getServiceInterface(), ServingStatus.NOT_SERVING);
+
                 }
                 exporterMap.remove(key);
             }
@@ -114,7 +108,7 @@ public class TripleProtocol extends AbstractProtocol {
         exporterMap.put(key, exporter);
 
         invokers.add(invoker);
-
+        // step2 加入PathResolver
         Invoker<?> previous = pathResolver.add(url.getServiceKey(), invoker);
         if (previous != null) {
             if (url.getServiceKey()
@@ -143,17 +137,13 @@ public class TripleProtocol extends AbstractProtocol {
 
         // set service status
         if (triBuiltinService.enable()) {
-            triBuiltinService
-                    .getHealthStatusManager()
-                    .setStatus(url.getServiceKey(), HealthCheckResponse.ServingStatus.SERVING);
-            triBuiltinService
-                    .getHealthStatusManager()
-                    .setStatus(url.getServiceInterface(), HealthCheckResponse.ServingStatus.SERVING);
+
         }
         // init
+        // step3 初始化服务端线程池
         ExecutorRepository.getInstance(url.getOrDefaultApplicationModel())
                 .createExecutorIfAbsent(ExecutorUtil.setThreadName(url, SERVER_THREAD_POOL_NAME));
-
+        // step4 开启netty服务端
         PortUnificationExchanger.bind(url, new DefaultPuHandler());
         optimizeSerialization(url);
         return exporter;
@@ -162,8 +152,11 @@ public class TripleProtocol extends AbstractProtocol {
     @Override
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
         optimizeSerialization(url);
+        // 初始化 consumer共享线程池 200线程
         ExecutorService streamExecutor = getOrCreateStreamExecutor(url.getOrDefaultApplicationModel(), url);
+        // 创建netty客户端，与对端建立连接
         AbstractConnectionClient connectionClient = PortUnificationExchanger.connect(url, new DefaultPuHandler());
+        // 封装invoker返回上游
         TripleInvoker<T> invoker =
                 new TripleInvoker<>(type, url, acceptEncodings, connectionClient, invokers, streamExecutor);
         invokers.add(invoker);

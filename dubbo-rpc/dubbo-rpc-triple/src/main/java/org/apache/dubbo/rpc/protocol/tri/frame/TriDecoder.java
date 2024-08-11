@@ -119,8 +119,9 @@ public class TriDecoder implements Deframer {
         if ((type & RESERVED_MASK) != 0) {
             throw new RpcException("gRPC frame header malformed: reserved bits not zero");
         }
+        // 是否压缩
         compressedFlag = (type & COMPRESSED_FLAG_MASK) != 0;
-
+        // 实际业务报文长度
         requiredLength = accumulate.readInt();
 
         // Continue reading the frame body.

@@ -154,10 +154,12 @@ public abstract class AbstractServerCall implements ServerCall, ServerStream.Lis
             return;
         }
         if (!headerSent) {
+            // step1 发送http响应头
             sendHeader();
         }
         final byte[] data;
         try {
+            // step2 序列化
             data = packableMethod.packResponse(message);
         } catch (Exception e) {
             close(
@@ -183,6 +185,7 @@ public abstract class AbstractServerCall implements ServerCall, ServerStream.Lis
             final byte[] compressed = compressor.compress(data);
             future = stream.sendMessage(compressed, compressedFlag);
         } else {
+            // step3 提交到netty worker线程池
             future = stream.sendMessage(data, 0);
         }
         future.addListener(f -> {
@@ -262,6 +265,7 @@ public abstract class AbstractServerCall implements ServerCall, ServerStream.Lis
                 new Object[0]);
         inv.setTargetServiceUniqueName(url.getServiceKey());
         inv.setReturnTypes(methodDescriptor.getReturnTypes());
+        // 【关注】 请求头被塞在attachment中
         inv.setObjectAttachments(StreamUtils.toAttachments(requestMetadata));
         inv.put(REMOTE_ADDRESS_KEY, stream.remoteAddress());
         // handle timeout
